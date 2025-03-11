@@ -1,88 +1,78 @@
 # PterodactylPowerAction
 
-A Velocity plugin to start and stop servers using the [Pterodactyl](https://pterodactyl.io/) client API.
+Ein Velocity-Plugin zum Starten und Stoppen von Servern über die [Pterodactyl](https://pterodactyl.io/) Client-API.
 
-## How it works
+## Funktionsweise  
 
-This plugin will stop a server after a given delay (1 hour by default) if it is empty after a player left or changed
-server.
+Dieses Plugin stoppt einen Server nach einer bestimmten Verzögerung (standardmäßig 1 Stunde), wenn er leer ist, nachdem ein Spieler den Server verlassen oder gewechselt hat.  
 
-When a player tries to connect to a stopped server, they will be redirected to a waiting server such
-as [Limbo](https://www.spigotmc.org/resources/82468/) and will be automatically redirected to the requested server once
-it is started.
+Versucht ein Spieler, sich mit einem gestoppten Server zu verbinden, wird er zu einem Warte-Server wie [Limbo](https://www.spigotmc.org/resources/82468/) weitergeleitet und automatisch verbunden, sobald der gewünschte Server gestartet ist.  
 
-If the player is already connected on the network, they will simply be informed by a message that they will be
-automatically redirected once the server is ready.
+Falls sich der Spieler bereits im Netzwerk befindet, erhält er eine Nachricht mit der Information, dass er automatisch weitergeleitet wird, sobald der Server bereit ist.  
 
-If the server fails to start, the player will be informed to try again.
+Sollte der Server nicht erfolgreich starten, wird der Spieler darüber informiert und muss es erneut versuchen.  
 
-This plugin is also able to redirect your player that has been kicked from a backend server to the waiting server, this
-is toggleable in the configuration file.
+Das Plugin kann außerdem Spieler, die von einem Backend-Server gekickt wurden, zum Warte-Server weiterleiten. Diese Funktion kann in der Konfigurationsdatei aktiviert oder deaktiviert werden.  
 
-## Configuration
+## Konfiguration  
 
-### Pterodactyl Panel
+### Pterodactyl-Panel  
 
-If you have a Pterodactyl Panel to manage your servers, you can use this method.
+Falls du ein Pterodactyl-Panel zur Verwaltung deiner Server nutzt, kannst du diese Methode verwenden.  
 
-First, create a client API key which can be found under "Account Settings" then "API Credentials", the URL path should
-be `/account/api`.
+1. Erstelle einen Client-API-Schlüssel unter „Account Settings“ → „API Credentials“. Die URL ist `/account/api`.  
+2. Richte einen Warte-Server in deiner `velocity.toml`-Datei ein, z. B.:  
 
-Configure a waiting server in your `velocity.toml` file, such as:
+   ```toml
+   [servers]
+   limbo = "localhost:30066"
+   survival = "localhost:30067"
 
-```toml
-[servers]
-limbo = "localhost:30066"
-survival = "localhost:30067"
+   try = ["survival"]
 
-try = ["survival"]
+   [forced-hosts]
+   "localhost" = ["survival"]
+   ```
 
-[forced-hosts]
-"localhost" = ["survival"]
-```
+3. Installiere das Plugin auf deinem Velocity-Proxy. Beim ersten Start wird automatisch eine Standardkonfiguration erstellt.  
+4. Bearbeite die Konfigurationsdatei des Plugins und trage deine Pterodactyl-Anmeldedaten ein:  
 
-Install the plugin on your Velocity proxy, a default configuration file will be created when the proxy is started.
-Finally edit the plugin's configuration file to include your Pterodactyl credentials.
+   ```yaml
+   type: "pterodactyl" # Alternativ "shell" – siehe README für Details
+   # Client-API-Schlüssel aus "Account Settings" → "API Credentials" abrufen
+   pterodactyl_api_key: "ptlc_xxx"
+   pterodactyl_client_api_base_url: "https://example.com/api/client"
+   servers:
+     # "survival" ist der Name des Servers aus der "velocity.toml"
+     # "Server ID" ist die Kennung des Servers im Pterodactyl-Panel (siehe "Debug Information" unter "Settings")
+     survival: "Server ID"
+   waiting_server_name: "limbo" # Warte-Server aus der "velocity.toml"
+   maximum_ping_duration: 60 # Standard: 1 Minute
+   shutdown_after_duration: 3_600 # Standard: 1 Stunde
+   redirect_to_waiting_server_on_kick: true # Standard: false
+   ```
 
-```yaml
-type: "pterodactyl" # Can also be "shell", see the README for more information
-# Create a new client API key which can be found under "Account Settings" then "API Credentials", the URL path should be https://example.com/account/api.
-pterodactyl_api_key: "ptlc_xxx"
-pterodactyl_client_api_base_url: "https://example.com/api/client"
-servers:
-  # "survival" is the name of the configured server in your "velocity.toml" file
-  # "Server ID" should be replaced with the identifier of your server in Pterodactyl
-  # The Server ID can be found under the "Debug Information" section in the "Settings" tab of your server
-  survival: "Server ID"
-waiting_server_name: "limbo" # "limbo" is the name of the configured server in your "velocity.toml" file
-maximum_ping_duration: 60 # in seconds, defaults to 1 minute
-shutdown_after_duration: 3_600 # in seconds, defaults to 1 hour
-redirect_to_waiting_server_on_kick: true # defaults to false
-```
-
-> [!WARNING]
-> If the panel is running behind a proxy such as CloudFlare DNS proxy, the plugin may not be able to start the servers
-> and output errors such as:
+> ⚠ **Achtung**  
+> Falls dein Pterodactyl-Panel hinter einem Proxy wie CloudFlare läuft, kann das Plugin möglicherweise keine Server starten. Fehler wie der folgende können auftreten:  
 > ```
-> An error occurred while starting the server survival
+> Ein Fehler ist aufgetreten beim Starten des Servers "survival"
 > java.net.ConnectException: Connection refused
 > ```
 
-### Shell commands
+### Shell-Befehle  
 
-If you don't have a Pterodactyl panel, and you are running servers directly from the Linux shell, you can modify the
-plugin's configuration to instead run shell commands.
+Falls du kein Pterodactyl-Panel nutzt und deine Server direkt über die Linux-Shell startest, kannst du stattdessen Shell-Befehle in der Konfiguration angeben.  
 
-This has not been tested on Windows and please note that the `cd` command will not work, you will have to use the
-`working_directory` setting instead.
+🚨 **Hinweis:**  
+Dies wurde nicht unter Windows getestet. Der `cd`-Befehl funktioniert nicht – verwende stattdessen `working_directory`.
 
-Here is an example using docker compose to manager servers:
+**Beispiel mit Docker Compose:**  
 
 ```yaml
 type: "shell"
 servers:
   survival:
-    # "working_directory" can be omitted and the current working directory will be used instead
+    # Falls nicht angegeben, wird das aktuelle Arbeitsverzeichnis genutzt
     working_directory: /path/to/docker/compose
     start: docker compose start survival
     stop: docker compose stop survival
@@ -92,17 +82,14 @@ shutdown_after_duration: 3_600
 redirect_to_waiting_server_on_kick: true
 ```
 
-## Limbo servers
+## Warte-Server  
 
-Here is a small list of recommended lightweights servers software to use as waiting server:
+Empfohlene lightweight Server-Software für den Warte-Server:  
 
-- [Limbo](https://www.spigotmc.org/resources/82468/)
-- [NanoLimbo](https://www.spigotmc.org/resources/86198/)
-- [Quozul/McServer](https://github.com/Quozul/McServer)
+- [Limbo](https://www.spigotmc.org/resources/82468/)  
+- [NanoLimbo](https://www.spigotmc.org/resources/86198/)  
+- [Quozul/McServer](https://github.com/Quozul/McServer)  
 
-## Motivations
+## Motivation  
 
-I am running Minecraft servers on dedicated hardware at home, and I wanted to save energy costs by stopping empty
-servers.
-
-My Limbo server is running on a low power ARM Single Board Computer to further save costs.
+Ich habe das Plugin gefunden und wollte für mich eine Deutsche version. Ansonsten wollte ich hiermit auch eine Möglichkeit für meine Muttersprache geben dieses Plugin zu verwenden.
